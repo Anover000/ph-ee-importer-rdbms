@@ -113,19 +113,25 @@ public class RecordParser {
             workflowInstanceKey = parentInstanceKey;
         }
 
+        logger.info("BPMN process id:{}",bpmnProcessId);
         BpmnProcess bpmnProcess = bpmnProcessProperties.getById(bpmnProcessId);
+        logger.info("BPMN Process : {}", bpmnProcess.toString());
+
+        logger.info("Transfer Type : {}", transferType);
+
         if (transferType.equals(bpmnProcess.getType())) {
             if (variableParser.getTransferParsers().containsKey(name)) {
-                logger.debug("add variable {} to transfer for workflow {}", name, workflowInstanceKey);
+                logger.info("add variable {} to transfer for workflow {}", name, workflowInstanceKey);
                 String value = newVariable.read("$.value.value");
 
                 Transfer transfer = inflightTransferManager.getOrCreateTransfer(workflowInstanceKey);
                 variableParser.getTransferParsers().get(name).accept(Pair.of(transfer, value));
+
                 transferRepository.save(transfer);
             }
         } else if (transactionRequestType.equals(bpmnProcess.getType())) {
             if (variableParser.getTransactionRequestParsers().containsKey(name)) {
-                logger.debug("add variable to transactionRequest {} for workflow {}", name, workflowInstanceKey);
+                logger.info("add variable to transactionRequest {} for workflow {}", name, workflowInstanceKey);
                 String value = newVariable.read("$.value.value");
 
                 TransactionRequest transactionRequest = inflightTransactionRequestManager.getOrCreateTransactionRequest(workflowInstanceKey);
@@ -137,7 +143,7 @@ public class RecordParser {
             }
         } else if (batchType.equals(bpmnProcess.getType())) {
             if (variableParser.getBatchParsers().containsKey(name)) {
-                logger.debug("add variable {} to batch for workflow {}", name, workflowInstanceKey);
+                logger.info("add variable {} to batch for workflow {}", name, workflowInstanceKey);
                 String value = newVariable.read("$.value.value");
 
                 Batch batch = inflightBatchManager.getOrCreateBatch(workflowInstanceKey);
@@ -183,7 +189,14 @@ public class RecordParser {
         variable.setName(name);
         String value = json.read("$.value.value");
         variable.setValue(value);
-        variableRepository.save(variable);
+
+        try{
+            variableRepository.save(variable);
+        }catch (Exception ex)
+        {
+            logger.debug("*****************************************************" + ex.toString());
+        }
+
         return json;
     }
 

@@ -34,4 +34,14 @@ public class BpmnProcess {
     public void setType(String type) {
         this.type = type;
     }
+
+    @Override
+    public String toString() {
+        return "BpmnProcess{" +
+                "id='" + id + '\'' +
+                ", direction='" + direction + '\'' +
+                ", type='" + type + '\'' +
+                '}';
+    }
 }
+
