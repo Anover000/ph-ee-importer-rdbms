@@ -1,6 +1,8 @@
 package hu.dpc.phee.operator.importer;
 
 import com.jayway.jsonpath.DocumentContext;
+import hu.dpc.phee.operator.entity.ancillary.TimestampRepository;
+import hu.dpc.phee.operator.entity.ancillary.Timestamps;
 import hu.dpc.phee.operator.entity.tenant.TenantServerConnection;
 import hu.dpc.phee.operator.entity.tenant.TenantServerConnectionRepository;
 import hu.dpc.phee.operator.entity.tenant.ThreadLocalContextUtil;
@@ -38,6 +40,9 @@ public class KafkaConsumer implements ConsumerSeekAware {
     @Autowired
     private TempDocumentStore tempDocumentStore;
 
+    @Autowired
+    private TimestampRepository timestampRepository;
+
     @KafkaListener(topics = "${importer.kafka.topic}")
     public void listen(String rawData) {
         Long startTime = System.currentTimeMillis();
@@ -54,6 +59,8 @@ public class KafkaConsumer implements ConsumerSeekAware {
                 logger.info("Skipping VARIABLE_DOCUMENT record ");
                 return;
             }
+
+            logToTimestampsTable(incomingRecord);
 
             Long workflowKey = incomingRecord.read("$.value.processDefinitionKey");
             String bpmnprocessIdWithTenant = incomingRecord.read("$.value.bpmnProcessId");
@@ -147,6 +154,20 @@ public class KafkaConsumer implements ConsumerSeekAware {
             });
         } else {
             logger.info("no reset, consuming kafka topics from latest");
+        }
+    }
+
+    public void logToTimestampsTable(DocumentContext incomingRecord) {
+        try{
+            Timestamps timestamps = new Timestamps();
+            timestamps.setWorkflowInstanceKey(incomingRecord.read("$.value.processInstanceKey"));
+            timestamps.setTransactionId(incomingRecord.read("$.value.transactionId"));
+            timestamps.setExportedTime(incomingRecord.read("$.value.exportedTime"));
+            timestamps.setImportedTime(incomingRecord.read("$.value.importedTime"));
+            timestamps.setZeebeTime(incomingRecord.read("$.value.timestamp"));
+            timestampRepository.save(timestamps);
+        }catch (Exception e) {
+            logger.info("Error parsing record");
         }
     }
 }
